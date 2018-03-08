@@ -117,17 +117,12 @@ namespace NLog.Targets.ElasticSearch
                 _excludedProperties = ExcludedProperties.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToList();
         }
 
-        protected override void Write(AsyncLogEventInfo logEvent)
-        {
-            Write(new[] { logEvent });
-        }
-
-        protected override void Write(AsyncLogEventInfo[] logEvents)
+        protected override void Write(IList<AsyncLogEventInfo> logEvents)
         {
             SendBatch(logEvents);
         }
 
-        private void SendBatch(IEnumerable<AsyncLogEventInfo> events)
+        private void SendBatch(ICollection<AsyncLogEventInfo> events)
         {
             try
             {
@@ -178,7 +173,7 @@ namespace NLog.Targets.ElasticSearch
 
                 if (logEvent.Exception != null)
                 {
-                    var jsonString = JsonConvert.SerializeObject(logEvent.Exception);
+                    var jsonString = JsonConvert.SerializeObject(logEvent.Exception, new JsonSerializerSettings { ReferenceLoopHandling = ReferenceLoopHandling.Ignore });
 
                     var ex = JsonConvert.DeserializeObject<ExpandoObject>(jsonString);
 
@@ -189,7 +184,7 @@ namespace NLog.Targets.ElasticSearch
                 {
                     var renderedField = field.Layout.Render(logEvent);
                     if (!string.IsNullOrWhiteSpace(renderedField))
-                        document[field.Name] = renderedField.ToSystemType(field.LayoutType);
+                        document[field.Name] = renderedField.ToSystemType(field.LayoutType, logEvent.FormatProvider);
                 }
 
                 if (IncludeAllProperties)
